@@ -1,0 +1,7 @@
+services:
+  app:
+    build: .
+    container_name: expense_bot
+    volumes:
+      - .:/home/app/expense_bot
+    working_dir: /home/app/expense_bot
