@@ -17,6 +17,8 @@ logger = logging.getLogger(__name__)
 
 DEVELOPER_CHAT_ID = 138562035
 
+CHOOSING, TYPING_REPLY, TYPING_CHOICE = range(3)
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.bot.send_message(chat_id=update.effective_chat.id, text="I'm a bot, please talk to me!")
 
@@ -29,8 +31,10 @@ if __name__ == '__main__':
     if not bot_token:
         logger.error("Bot token not found. Please provide a token to get access to telegram API.")
 
-    application = ApplicationBuilder().token(bot_token).build()
+    persistence = PicklePersistence(filepath="conversationbot")
+    application = ApplicationBuilder().token(bot_token).persistence(persistence).build()
     
+    conv_handler = 
     start_handler = CommandHandler('start', start)
     echo_handler = MessageHandler(filters.TEXT & (~filters.COMMAND), echo)
     application.add_handler(start_handler)
