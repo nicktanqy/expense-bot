@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 DEVELOPER_CHAT_ID = 138562035
 
-CHOOSING, TYPING_REPLY, TYPING_CHOICE = range(3)
+CHOOSING, TYPING_REPLY, TYPING_CHOICE, SAVINGS, BUDGET = range(5)
 
 reply_keyboard = [
     ['Current Savings', 'Monthly Budget'],
@@ -33,17 +33,22 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 I'm here to help you track your expenses and savings.
 I can also help you with budgeting and financial planning.
 """
+    status=-1
     if context.user_data:
         reply_text += f"\nYou already told me your {', '.join(context.user_data.keys())}."
         "\nYou can now start adding expenses by typing /expense."
+        status = CHOOSING
+        await update.message.reply_text(reply_text, reply_markup=markup)
     else:
         reply_text += (
-            "\nTo start, why don't you tell me your current savings and monthly budget?"
+            "\nTo start, why don't you tell me how much savings you currently have?"
         )
+        context.user_data["choice"] = "savings"
+        status = SAVINGS
+        await update.message.reply_text(reply_text)
     logger.info("User %s started the conversation.", update.message.from_user.first_name)
     logger.info(f"User data: {context.user_data}")
-    await update.message.reply_text(reply_text, reply_markup=markup)
-    return CHOOSING
+    return status
 
 async def regular_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Store the user's choice and ask for a value."""
@@ -71,20 +76,34 @@ async def done(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     )
     return ConversationHandler.END
 
+# async def savings(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+#     """Ask for the user's savings."""
+#     user = update.message.from_user
+#     logger.info(f"{user.first_name} chose: {update.message.text}")
+#     context.user_data["choice"] = "savings"
+#     await update.message.reply_text("Enter your savings.")
+#     return BUDGET
+
 async def received_information(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Store information provided by the user."""
+    state = CHOOSING
+    markup_func = markup
     user = update.message.from_user
     logger.info (f"Input from {user.first_name}: {update.message.text}")
     category = context.user_data["choice"]
     context.user_data[category] = update.message.text.lower()
-    del context.user_data["choice"]
+    text = f"Here is what you told me so far {context.user_data}."
+    if category == "savings":
+        state = BUDGET
+        context.user_data["choice"] = "budget"
+        text = "Enter your monthly budget."
+        markup_func = None
+        
     await update.message.reply_text(
-        "Neat! Just so you know, this is what you already told me:"
-        f"{context.user_data}"
-        "You can tell me more, or change your opinion on something.",
-        reply_markup=markup,
+        text,
+        reply_markup=markup_func,
     )
-    return CHOOSING
+    return state
 
 async def show_data(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Display the gathered info."""
@@ -118,6 +137,18 @@ def main() -> None:
                 )
             ],
             TYPING_REPLY: [
+                MessageHandler(
+                    filters.TEXT & (~filters.COMMAND | filters.Regex("^Done$")),
+                    received_information
+                ),
+            ],
+            SAVINGS: [
+                MessageHandler(
+                    filters.TEXT & (~filters.COMMAND | filters.Regex("^Done$")),
+                    received_information
+                ),
+            ],
+            BUDGET: [
                 MessageHandler(
                     filters.TEXT & (~filters.COMMAND | filters.Regex("^Done$")),
                     received_information
