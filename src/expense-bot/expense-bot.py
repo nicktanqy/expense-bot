@@ -17,10 +17,10 @@ logger = logging.getLogger(__name__)
 
 DEVELOPER_CHAT_ID = 138562035
 
-CHOOSING, TYPING_REPLY, TYPING_CHOICE, SAVINGS, BUDGET = range(5)
+CHOOSING, TYPING_REPLY, TYPING_CHOICE, NEW_USER, SAVINGS, BUDGET, SAVINGS_GOAL, AGE_GOAL = range(8)
 
 reply_keyboard = [
-    ['Current Savings', 'Monthly Budget'],
+    ['Age', 'Current Savings', 'Monthly Budget', 'Savings Goal', 'Age Goal'],
     ['Done']
 ]
 markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, input_field_placeholder="What do you want to tell me?")
@@ -35,20 +35,59 @@ I can also help you with budgeting and financial planning.
 """
     status=-1
     if context.user_data:
-        reply_text += f"\nYou already told me your {', '.join(context.user_data.keys())}."
-        "\nYou can now start adding expenses by typing /expense."
+        reply_text += f"\nSelect one of the options below to view your current status."
+        "\nYou can also start adding expenses by typing /expense."
         status = CHOOSING
         await update.message.reply_text(reply_text, reply_markup=markup)
     else:
         reply_text += (
-            "\nTo start, why don't you tell me how much savings you currently have?"
+            "\nTo start, why don't you tell me more about yourself? What is your age?"
         )
-        context.user_data["choice"] = "savings"
-        status = SAVINGS
+        status = NEW_USER
         await update.message.reply_text(reply_text)
     logger.info("User %s started the conversation.", update.message.from_user.first_name)
     logger.info(f"User data: {context.user_data}")
     return status
+
+async def new_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Ask for the user's age."""
+
+    context.user_data["age"] = update.message.text
+    await update.message.reply_text("Enter your savings.")
+    return SAVINGS
+
+async def savings(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Ask for the user's savings."""
+    context.user_data["savings"] = update.message.text
+    logger.info(f"Savings: {update.message.text}")
+    await update.message.reply_text("Enter your monthly budget.")
+    return BUDGET
+
+async def budget(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Ask for the user's budget."""
+    context.user_data["budget"] = update.message.text
+    logger.info(f"Budget: {update.message.text}")
+
+    await update.message.reply_text("Enter your savings goal.")
+    return SAVINGS_GOAL
+
+async def savings_goal(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Ask for the user's savings goal."""
+    context.user_data["savings_goal"] = update.message.text
+    logger.info(f"Savings Goal: {update.message.text}")
+
+    await update.message.reply_text("By what age do you want to achieve this goal?")
+    return AGE_GOAL
+
+async def age_goal(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Ask for the user's age goal."""
+    context.user_data["age_goal"] = update.message.text
+    logger.info(f"Age Goal: {update.message.text}")
+    
+    await update.message.reply_text("Great! You're all set.\nI will keep track of your expenses and savings for you."
+                                    "You can always check your current status by typing /show_data."
+                                    )
+    return TYPING_CHOICE
 
 async def regular_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Store the user's choice and ask for a value."""
@@ -76,14 +115,6 @@ async def done(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     )
     return ConversationHandler.END
 
-# async def savings(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-#     """Ask for the user's savings."""
-#     user = update.message.from_user
-#     logger.info(f"{user.first_name} chose: {update.message.text}")
-#     context.user_data["choice"] = "savings"
-#     await update.message.reply_text("Enter your savings.")
-#     return BUDGET
-
 async def received_information(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Store information provided by the user."""
     state = CHOOSING
@@ -93,11 +124,6 @@ async def received_information(update: Update, context: ContextTypes.DEFAULT_TYP
     category = context.user_data["choice"]
     context.user_data[category] = update.message.text.lower()
     text = f"Here is what you told me so far {context.user_data}."
-    if category == "savings":
-        state = BUDGET
-        context.user_data["choice"] = "budget"
-        text = "Enter your monthly budget."
-        markup_func = None
         
     await update.message.reply_text(
         text,
@@ -142,16 +168,34 @@ def main() -> None:
                     received_information
                 ),
             ],
+            NEW_USER: [
+                MessageHandler(
+                    filters.TEXT & (~filters.COMMAND | filters.Regex("^Done$")),
+                    new_user
+                ),
+            ],
             SAVINGS: [
                 MessageHandler(
                     filters.TEXT & (~filters.COMMAND | filters.Regex("^Done$")),
-                    received_information
+                    savings
                 ),
             ],
             BUDGET: [
                 MessageHandler(
                     filters.TEXT & (~filters.COMMAND | filters.Regex("^Done$")),
-                    received_information
+                    budget
+                ),
+            ],
+            SAVINGS_GOAL: [
+                MessageHandler(
+                    filters.TEXT & (~filters.COMMAND | filters.Regex("^Done$")),
+                    savings_goal
+                ),
+            ],
+            AGE_GOAL: [
+                MessageHandler(
+                    filters.TEXT & (~filters.COMMAND | filters.Regex("^Done$")),
+                    age_goal
                 ),
             ],
         },
