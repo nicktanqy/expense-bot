@@ -1,3 +1,26 @@
+# /start
+# IF new user, goto signup flow
+# ELSE goto CHOOSING (view, edit, add_expense)
+
+# /signup
+# ask for age>savings>budget>savings goal>age goal
+# goto CHOOSING (view, edit, add_expense)
+
+# CHOOSING
+# show menu (view, edit, add_expense)
+# view: ask for what to view (savings, budget, savings goal, age goal)
+# edit: ask for what to edit (savings, budget, savings goal, age goal)
+# add_expense: ask for value of expense
+# goto TYPING_CHOICE
+
+# TYPING_CHOICE
+# ask for value of expense (or savings, budget, savings goal, age goal)
+# goto TYPING_REPLY
+
+# TYPING_REPLY
+# store the value of expense (or savings, budget, savings goal, age goal)
+# goto CHOOSING
+# DONE
 import logging
 import os
 from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove, Update
@@ -24,6 +47,8 @@ reply_keyboard = [
     ['Done']
 ]
 markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, input_field_placeholder="What do you want to tell me?")
+
+
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Start the conversation and ask for user information."""
